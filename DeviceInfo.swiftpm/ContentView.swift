@@ -15,15 +15,21 @@ import SystemConfiguration
 
 struct Row: View {
     let key: LocalizedStringKey
-    let value: String
+    let value: Text
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text(value)
+            value
             Text(key)
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
+    }
+}
+
+extension Row {
+    init(key: LocalizedStringKey, value: String) {
+        self.init(key: key, value: Text(value))
     }
 }
 
@@ -53,7 +59,7 @@ struct ContentView: View {
             Row(key: "UIDevice.current.model",
                 value: UIDevice.current.model)
             Row(key: "UIDevice.current.userInterfaceIdiom",
-                value: {
+                value: { () -> String in
                 switch UIDevice.current.userInterfaceIdiom {
                 case .unspecified:
                     return "unspecified"
@@ -73,7 +79,7 @@ struct ContentView: View {
             }())
             #endif
             Row(key: "utsname.machine",
-                value: {
+                value: { () -> String in
                 var systemInfo = utsname()
                 uname(&systemInfo)
                 return withUnsafePointer(to: systemInfo.machine) {
@@ -83,19 +89,21 @@ struct ContentView: View {
                 }
             }())
             Row(key: "hw.model",
-                value: {
+                value: { () -> Text in
                 return "hw.model".withCString { hwModelCStr in
                     var size = 0
                     if sysctlbyname(hwModelCStr, nil, &size, nil, 0) != 0 {
-                        return "Failed to get size of hw.model (\(String(cString: strerror(errno))))"
+                        return Text("Failed to get size of hw.model (\(String(cString: strerror(errno))))")
+                            .foregroundColor(.red)
                     }
                     precondition(size > 0)
                     let resultCStr = UnsafeMutablePointer<CChar>.allocate(capacity: size)
                     defer { resultCStr.deallocate() }
                     if sysctlbyname(hwModelCStr, resultCStr, &size, nil, 0) != 0 {
-                        return "Failed to get hw.model (\(String(cString: strerror(errno))))"
+                        return Text("Failed to get hw.model (\(String(cString: strerror(errno))))")
+                            .foregroundColor(.red)
                     }
-                    return String(cString: resultCStr)
+                    return Text(String(cString: resultCStr))
                 }
             }())
         } header: {
@@ -114,7 +122,7 @@ struct ContentView: View {
             Row(key: "sysctl.proc_translated",
                 value: {
                 // https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment
-                return "sysctl.proc_translated".withCString { procTranslatedCStr -> String in
+                return "sysctl.proc_translated".withCString { procTranslatedCStr -> Text in
                     var resultCInt = -1 as CInt
                     var size = MemoryLayout.size(ofValue: resultCInt)
                     // Call the sysctl and if successful return the result
@@ -122,17 +130,19 @@ struct ContentView: View {
                     if sysctlbyname(procTranslatedCStr, &resultCInt, &size, nil, 0) == 0 {
                         switch resultCInt {
                         case 1:
-                            return "Translated"
+                            return Text("translated")
                         case 0:
-                            return "Native"
+                            return Text("native")
                         case let result:
-                            fatalError("Unexpected sysctl.proc_translated (\(result))")
+                            return Text("Unexpected sysctl.proc_translated (\(result))")
+                                .foregroundColor(.red)
                         }
                     } else if errno == ENOENT {
                         // If "sysctl.proc_translated" is not present then must be native
-                        return "Native"
+                        return Text("native")
                     } else {
-                        return "Failed to get sysctl.proc_translated (\(String(cString: strerror(errno))))"
+                        return Text("Failed to get sysctl.proc_translated (\(String(cString: strerror(errno))))")
+                            .foregroundColor(.red)
                     }
                 }
             }())
