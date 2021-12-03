@@ -97,9 +97,8 @@ struct ContentView: View {
                             .foregroundColor(.red)
                     }
                     precondition(size > 0)
-                    let resultCStr = UnsafeMutablePointer<CChar>.allocate(capacity: size)
-                    defer { resultCStr.deallocate() }
-                    if sysctlbyname(hwModelCStr, resultCStr, &size, nil, 0) != 0 {
+                    var resultCStr = [CChar](repeating: 0, count: size)
+                    if sysctlbyname(hwModelCStr, &resultCStr, &size, nil, 0) != 0 {
                         return Text("Failed to get hw.model (\(String(cString: strerror(errno))))")
                             .foregroundColor(.red)
                     }
