@@ -86,10 +86,18 @@ struct ContentView: View {
                 value: {
                 return "hw.model".withCString { hwModelCStr in
                     var size = 0
-                    sysctlbyname(hwModelCStr, nil, &size, nil, 0)
+                    var status = 0 as CInt
+                    status = sysctlbyname(hwModelCStr, nil, &size, nil, 0)
+                    if status != ENOMEM {
+                        return "Failed to get size of hw.model (\(status))"
+                    }
+                    precondition(size > 0)
                     let resultCStr = UnsafeMutablePointer<CChar>.allocate(capacity: size)
                     defer { resultCStr.deallocate() }
-                    sysctlbyname(hwModelCStr, resultCStr, &size, nil, 0)
+                    status = sysctlbyname(hwModelCStr, resultCStr, &size, nil, 0)
+                    if status != 0 {
+                        return "Failed to get hw.model (\(status))"
+                    }
                     return String(cString: resultCStr)
                 }
             }())
@@ -106,6 +114,36 @@ struct ContentView: View {
                 value: "\(ProcessInfo.processInfo.isiOSAppOnMac)")
             Row(key: "ProcessInfo.processInfo.isMacCatalystApp",
                 value: "\(ProcessInfo.processInfo.isMacCatalystApp)")
+            Row(key: "sysctl.proc_translated",
+                value: {
+                // https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment
+                func processIsTranslated() -> CInt {
+                    return "sysctl.proc_translated".withCString { procTranslatedCStr -> CInt in
+                        var returnCInt = 0 as CInt
+                        var size = MemoryLayout.size(ofValue: returnCInt)
+                        // Call the sysctl and if successful return the result
+                        // Returns 1 if running in Rosetta
+                        if sysctlbyname(procTranslatedCStr, &returnCInt, &size, nil, 0) != -1 {
+                            return returnCInt
+                        }
+                        if errno == ENOENT {
+                            // If "sysctl.proc_translated" is not present then must be native
+                            return 0
+                        }
+                        return -1
+                    }
+                }
+                switch processIsTranslated() {
+                case 1:
+                    return "Translated"
+                case 0:
+                    return "Native"
+                case -1:
+                    return "Failed to get sysctl.proc_translated"
+                case let value:
+                    fatalError("Unexpected result \(value) for sysctl.proc_translated")
+                }
+            }())
         } header: {
             Text("Process Info")
         }
