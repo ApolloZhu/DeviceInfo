@@ -87,13 +87,13 @@ struct ContentView: View {
                 return "hw.model".withCString { hwModelCStr in
                     var size = 0
                     if sysctlbyname(hwModelCStr, nil, &size, nil, 0) != 0 {
-                        return "Failed to get size of hw.model (\(errno))"
+                        return "Failed to get size of hw.model (\(String(cString: strerror(errno))))"
                     }
                     precondition(size > 0)
                     let resultCStr = UnsafeMutablePointer<CChar>.allocate(capacity: size)
                     defer { resultCStr.deallocate() }
                     if sysctlbyname(hwModelCStr, resultCStr, &size, nil, 0) != 0 {
-                        return "Failed to get hw.model (\(errno))"
+                        return "Failed to get hw.model (\(String(cString: strerror(errno))))"
                     }
                     return String(cString: resultCStr)
                 }
@@ -132,7 +132,7 @@ struct ContentView: View {
                         // If "sysctl.proc_translated" is not present then must be native
                         return "Native"
                     } else {
-                        return "Failed to get sysctl.proc_translated (\(errno))"
+                        return "Failed to get sysctl.proc_translated (\(String(cString: strerror(errno))))"
                     }
                 }
             }())
