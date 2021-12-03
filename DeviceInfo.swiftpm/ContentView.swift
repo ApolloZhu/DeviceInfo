@@ -52,6 +52,25 @@ struct ContentView: View {
             #if canImport(UIKit)
             Row(key: "UIDevice.current.model",
                 value: UIDevice.current.model)
+            Row(key: "UIDevice.current.userInterfaceIdiom",
+                value: {
+                switch UIDevice.current.userInterfaceIdiom {
+                case .unspecified:
+                    return "unspecified"
+                case .phone:
+                    return "phone"
+                case .pad:
+                    return "pad"
+                case .tv:
+                    return "tv"
+                case .carPlay:
+                    return "carPlay"
+                case .mac:
+                    return "mac"
+                @unknown default:
+                    return "unknown"
+                }
+            }())
             #endif
             Row(key: "utsname.machine",
                 value: {
